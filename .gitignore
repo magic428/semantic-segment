@@ -118,3 +118,6 @@ Mnist_data/
 
 ## python objs
 *.pyc
+
+
+*__predict.png
