@@ -1,0 +1,2 @@
+{'momentum': 0.95, 'val_img_sample_rate': 0.1, 'val_save_to_img_file': False, 'snapshot': '', 'weight_decay': 0.0001, 'epoch_num': 300, 'print_freq': 20, 'best_record': {'mean_iu': 0, 'val_loss': 10000000000.0, 'fwavacc': 0, 'acc_cls': 0, 'acc': 0, 'epoch': 0}, 'lr': 1e-10, 'lr_patience': 100}
+
