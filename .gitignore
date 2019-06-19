@@ -121,3 +121,6 @@ Mnist_data/
 
 
 *__predict.png
+
+# PyTorch models backup
+ckpt/
