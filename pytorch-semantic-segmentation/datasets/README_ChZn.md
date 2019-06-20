@@ -10,7 +10,9 @@
 https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/data/pascal/seg11valid.txt), 下载 **seg11valid.txt** 文件, 将其保存在 ***VOCdevkit/VOC2012/ImageSets/Segmentation/*** 目录下.  
 
 4. 将 ***benchmark_RELEASE/*** 和 ***VOCdevkit/*** 目录移动到 ***VOC/*** 目录下.  
+5. 下载 VOC2012test.tar 数据集, 解压后得到 ***VOCdevkit/***, 将其重命名为  ***VOCdevkit-test/*** 后移动到 ***VOC/*** 目录下.  
 5. 将 **voc.py** 脚本中的 **path** 变量设置为 ***VOC/*** 目录所在的根目录.  
+
 
 ## Cityscapes  
 

@@ -43,11 +43,6 @@ https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth
 https://download.pytorch.org/models/densenet201-c1103571.pth
 ```
 
-
-
-
-
-
 ## TODO
 
 1. DeepLab v3 
@@ -55,3 +50,22 @@ https://download.pytorch.org/models/densenet201-c1103571.pth
 2. RefineNet  
 
 3. More dataset (e.g. ADE)  
+
+
+## Issues
+
+### 1. voc-psp-net  
+
+由于 cityScapes 数据集无法下载的问题, 这是第一个开始训练的代码. 问题也相对比较多.  
+
+(1) 原来作者使用的 batch-size = 1, 但是会出现 BatchNorm2D 在求均值方差的时候报 Error;  
+
+(2) 作者使用了 SlideCrop Transform 方法, 但是参数设置不合理, 导致训练数据集的尺寸不统一;   
+
+(3) 作者在 validate 阶段使用了 shorter_size, 但是在代码中并未指定, 经测试, 设置为  512;   
+
+(4) 数据类型的问题, int 和 float 对于某些运算会报 error.  
+
+训练精度达到 0.92438 , 总的来说比较成功. 共训练 30,000 次, 14 epoches.   
+
+best record: [val loss 0.30675], [acc 0.92438], [acc_cls 0.83356], [mean_iu 0.69690], [fwavacc 0.86730], [epoch 14]

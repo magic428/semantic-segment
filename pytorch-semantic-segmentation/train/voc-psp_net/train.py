@@ -1,14 +1,18 @@
 import datetime
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, [2,3]))
 from math import sqrt
 
 import numpy as np
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
-from tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+
+import sys
+sys.path.insert(0, "/home/tdmc/work/gitwork/dl_ai/dl_framework/segment/pytorch-semantic-segmentation")
 
 import utils.joint_transforms as joint_transforms
 import utils.transforms as extended_transforms
@@ -21,12 +25,14 @@ exp_name = 'voc-psp_net'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'train_batch_size': 1,
+    'train_batch_size': 4,
     'lr': 1e-2 / sqrt(16 / 4),
     'lr_decay': 0.9,
     'max_iter': 3e4,
     'longer_size': 512,
-    'crop_size': 473,
+    'shorter_size': 512,    # add by magic428
+    'crop_size': 512,
+    # 'crop_size': 473,     # wrong value
     'stride_rate': 2 / 3.,
     'weight_decay': 1e-4,
     'momentum': 0.9,
@@ -42,7 +48,7 @@ def main():
     net = PSPNet(num_classes=voc.num_classes).cuda()
 
     if len(args['snapshot']) == 0:
-        net.load_state_dict(torch.load(os.path.join(ckpt_path, 'cityscapes (coarse)-psp_net', 'xx.pth')))
+        # net.load_state_dict(torch.load(os.path.join(ckpt_path, 'cityscapes (coarse)-psp_net', 'xx.pth')))
         curr_epoch = 1
         args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
     else:
@@ -79,10 +85,10 @@ def main():
 
     train_set = voc.VOC('train', joint_transform=train_joint_transform, sliding_crop=sliding_crop,
                                       transform=train_input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=8, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=1, shuffle=True, drop_last=True)
     val_set = voc.VOC('val', transform=val_input_transform, sliding_crop=sliding_crop,
                                     target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=1, num_workers=8, shuffle=False)
+    val_loader = DataLoader(val_set, batch_size=1, num_workers=1, shuffle=False,drop_last=True)
 
     criterion = CrossEntropyLoss2d(size_average=True, ignore_index=voc.ignore_label).cuda()
 
@@ -139,8 +145,8 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
                 loss.backward()
                 optimizer.step()
 
-                train_main_loss.update(main_loss.data[0], slice_batch_pixel_size)
-                train_aux_loss.update(aux_loss.data[0], slice_batch_pixel_size)
+                train_main_loss.update(main_loss.item(), slice_batch_pixel_size)
+                train_aux_loss.update(aux_loss.item(), slice_batch_pixel_size)
 
             curr_iter += 1
             writer.add_scalar('train_main_loss', train_main_loss.avg, curr_iter)
@@ -153,6 +159,7 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
                     optimizer.param_groups[1]['lr']))
             if curr_iter >= train_args['max_iter']:
                 return
+        
         validate(val_loader, net, criterion, optimizer, curr_epoch, train_args, visualize)
         curr_epoch += 1
 
@@ -163,7 +170,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, visualize
 
     val_loss = AverageMeter()
 
-    gts_all = np.zeros((len(val_loader), args['shorter_size'], 2 * args['shorter_size']), dtype=int)
+    gts_all = np.zeros((len(val_loader), args['shorter_size'], 2 * args['shorter_size']), dtype=float)
     predictions_all = np.zeros((len(val_loader), args['shorter_size'], 2 * args['shorter_size']), dtype=int)
     for vi, data in enumerate(val_loader):
         input, gt, slices_info = data
@@ -185,16 +192,18 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, visualize
             output_slice = net(input_slice)
             assert output_slice.size()[2:] == gt_slice.size()[1:]
             assert output_slice.size()[1] == voc.num_classes
+            # print('size: ', output[:, info[0]: info[1], info[2]: info[3]].size(), output_slice[0, :, :info[4], :info[5]].data.size())
             output[:, info[0]: info[1], info[2]: info[3]] += output_slice[0, :, :info[4], :info[5]].data
             gts_all[vi, info[0]: info[1], info[2]: info[3]] += gt_slice[0, :info[4], :info[5]].data.cpu().numpy()
 
             count[info[0]: info[1], info[2]: info[3]] += 1
 
-            val_loss.update(criterion(output_slice, gt_slice).data[0], slice_batch_pixel_size)
+            val_loss.update(criterion(output_slice, gt_slice).item(), slice_batch_pixel_size)
 
         output /= count
-        gts_all[vi, :, :] /= count.cpu().numpy().astype(int)
-        predictions_all[vi, :, :] = output.max(0)[1].squeeze_(0).cpu().numpy()
+        # print(count.cpu().numpy())
+        gts_all[vi, :, :] /= count.cpu().numpy().astype(float)
+        predictions_all[vi, :, :] = output.max(0)[1].squeeze_(0).cpu().numpy().astype(int)
 
         print('validating: %d / %d' % (vi + 1, len(val_loader)))
 
@@ -210,6 +219,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, visualize
         epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc, optimizer.param_groups[1]['lr'])
     torch.save(net.state_dict(), os.path.join(ckpt_path, exp_name, snapshot_name + '.pth'))
     torch.save(optimizer.state_dict(), os.path.join(ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
+    print("saving model: ", os.path.join(ckpt_path, exp_name, snapshot_name + '.pth'))
 
     if train_args['val_save_to_img_file']:
         to_save_dir = os.path.join(ckpt_path, exp_name, str(epoch))

@@ -1,4 +1,7 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, [2,3]))
+import sys
+sys.path.insert(0, "/home/tdmc/work/gitwork/dl_ai/dl_framework/segment/pytorch-semantic-segmentation")
 
 import torchvision.transforms as standard_transforms
 from torch.autograd import Variable
@@ -9,13 +12,14 @@ from datasets import voc
 from models import *
 from utils import check_mkdir
 
-cudnn.benchmark = True
+# cudnn.benchmark = True
 
 ckpt_path = './ckpt'
 
 args = {
     'exp_name': 'voc-psp_net',
-    'snapshot': 'epoch_33_loss_0.31766_acc_0.92188_acc-cls_0.81110_mean-iu_0.70271_fwavacc_0.86757_lr_0.0023769346.pth'
+    # 'snapshot': 'epoch_33_loss_0.31766_acc_0.92188_acc-cls_0.81110_mean-iu_0.70271_fwavacc_0.86757_lr_0.0023769346.pth'
+    'snapshot': 'epoch_14_loss_0.30675_acc_0.92438_acc-cls_0.83356_mean-iu_0.69690_fwavacc_0.86730_lr_0.0000708732.pth'
 }
 
 

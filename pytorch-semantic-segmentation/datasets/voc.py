@@ -8,7 +8,7 @@ from torch.utils import data
 
 num_classes = 21
 ignore_label = 255
-root = '/home/magic/data/VOC'
+root = '/home/tdmc/data/segmentation/VOC'
 
 '''
 color map
@@ -23,14 +23,12 @@ zero_pad = 256 * 3 - len(palette)
 for i in range(zero_pad):
     palette.append(0)
 
-
 def colorize_mask(mask):
     # mask: numpy array of the mask
     new_mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
     new_mask.putpalette(palette)
 
     return new_mask
-
 
 def make_dataset(mode):
     assert mode in ['train', 'val', 'test']
@@ -52,9 +50,9 @@ def make_dataset(mode):
             item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.png'))
             items.append(item)
     else:
-        img_path = os.path.join(root, 'VOCdevkit (test)', 'VOC2012', 'JPEGImages')
+        img_path = os.path.join(root, 'VOCdevkit-test', 'VOC2012', 'JPEGImages')
         data_list = [l.strip('\n') for l in open(os.path.join(
-            root, 'VOCdevkit (test)', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
+            root, 'VOCdevkit-test', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
         for it in data_list:
             items.append((img_path, it))
     return items
@@ -92,11 +90,13 @@ class VOC(data.Dataset):
 
         if self.sliding_crop is not None:
             img_slices, mask_slices, slices_info = self.sliding_crop(img, mask)
+
             if self.transform is not None:
                 img_slices = [self.transform(e) for e in img_slices]
             if self.target_transform is not None:
                 mask_slices = [self.target_transform(e) for e in mask_slices]
             img, mask = torch.stack(img_slices, 0), torch.stack(mask_slices, 0)
+
             return img, mask, torch.LongTensor(slices_info)
         else:
             if self.transform is not None:
