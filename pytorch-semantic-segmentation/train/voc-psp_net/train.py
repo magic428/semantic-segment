@@ -28,7 +28,7 @@ args = {
     'train_batch_size': 4,
     'lr': 1e-2 / sqrt(16 / 4),
     'lr_decay': 0.9,
-    'max_iter': 3e4,
+    'max_iter': 9e4,
     'longer_size': 512,
     'shorter_size': 512,    # add by magic428
     'crop_size': 512,
@@ -79,7 +79,7 @@ def main():
     ])
     target_transform = extended_transforms.MaskToTensor()
     visualize = standard_transforms.Compose([
-        standard_transforms.Scale(args['val_img_display_size']),
+        standard_transforms.Resize(args['val_img_display_size']),
         standard_transforms.ToTensor()
     ])
 

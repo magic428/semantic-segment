@@ -68,7 +68,7 @@ def main(train_args):
         extended_transforms.FlipChannels()
     ])
     visualize = standard_transforms.Compose([
-        standard_transforms.Scale(400),
+        standard_transforms.Resize(400),
         standard_transforms.CenterCrop(400),
         standard_transforms.ToTensor()
     ])

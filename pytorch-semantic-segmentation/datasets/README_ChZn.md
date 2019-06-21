@@ -2,7 +2,7 @@
 
 ## PASCAL VOC 2012   
 
-1. 访问 [下载链接](https://githb.com/shelhamer/fcn.berkeleyvision.org/tree/master/data/pascal), 下载 **SBD** 和 **PASCAL VOC 2012** 数据集.  
+1. 访问 [下载链接](https://github.com/shelhamer/fcn.berkeleyvision.org/tree/master/data/pascal), 下载 **SBD** 和 **PASCAL VOC 2012** 数据集.  
 
 2. 解压后得到两个文件夹: ***benchmark_RELEASE/*** 和 ***VOCdevkit/*** .    
 

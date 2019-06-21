@@ -6,18 +6,25 @@ import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 from torch import optim
+import torch 
 from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 import sys
-sys.path.insert(0, "/home/magic/work/gitwork/dl/segment/pytorch-semantic-segmentation")
+sys.path.insert(0, "/home/tdmc/work/gitwork/dl_ai/dl_framework/segment/pytorch-semantic-segmentation")
 
 import utils.transforms as extended_transforms
 from datasets import voc
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, [2,3]))
+os.environ["CUDA_CACHE_PATH"]="~/.cudacache"
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 cudnn.benchmark = True
 
@@ -147,7 +154,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         outputs = net(inputs)
         predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
 
-        val_loss.update(criterion(outputs, gts).data[0] / N, N)
+        val_loss.update(criterion(outputs, gts).item() / N, N)
 
         if random.random() > train_args['val_img_sample_rate']:
             inputs_all.append(None)
