@@ -18,11 +18,20 @@ class Compose(object):
 
 
 class RandomCrop(object):
+    '''Crop the image in a sample randomly 
+
+    args:
+        size (tuple or int): Desired output size. 
+                             If int, square crop is made.
+        padding:             Border padding value;
+        img:                 input image data;
+        mask:                GT data;
+    '''
     def __init__(self, size, padding=0):
-        if isinstance(size, numbers.Number):
+        if isinstance(size, numbers.Number):  
             self.size = (int(size), int(size))
         else:
-            self.size = size
+            self.size = int(size)
         self.padding = padding
 
     def __call__(self, img, mask):
@@ -209,6 +218,7 @@ class SlidingCrop(object):
         h, w = img.shape[: 2]
         pad_h = max(self.crop_size - h, 0)
         pad_w = max(self.crop_size - w, 0)
+        # If crop_size > h or crop_size > w, then just padding the border with constant  
         img = np.pad(img, ((0, pad_h), (0, pad_w), (0, 0)), 'constant')
         mask = np.pad(mask, ((0, pad_h), (0, pad_w)), 'constant', constant_values=self.ignore_label)
         return img, mask, h, w
@@ -243,3 +253,76 @@ class SlidingCrop(object):
             img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
             mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
             return [img], [mask], [[0, sub_h, 0, sub_w, sub_h, sub_w]]
+
+
+if __name__ == "__main__":
+
+    import sys
+    sys.path.insert(0, "/home/tdmc/work/gitwork/dl_ai/dl_framework/segment/pytorch-semantic-segmentation")
+    import torch
+    import utils.transforms as extended_transforms
+    import torchvision.transforms as standard_transforms
+
+
+
+    args = {
+        'train_batch_size': 4,
+        'lr_decay': 0.9,
+        'max_iter': 2e5,
+        'longer_size': 2048,
+        'crop_size': 713,
+        'stride_rate': 2 / 3.,
+        'weight_decay': 1e-4,
+        'momentum': 0.9,
+        # 'snapshot': '',
+        'snapshot': 'epoch_2_iter_456_loss_0.52281_acc_0.86247_acc-cls_0.48824_mean-iu_0.40518_fwavacc_0.76335_lr_0.0034931145.pth',
+        'print_freq': 10,
+        'val_save_to_img_file': True,
+        'val_img_sample_rate': 0.01,  # randomly sample some validation results to display,
+        'val_img_display_size': 384,
+        'val_freq': 600
+    }
+
+    ignore_label = 255
+    id_to_trainid = {-1: ignore_label, 0: ignore_label, 1: ignore_label, 2: ignore_label,
+                              3: ignore_label, 4: ignore_label, 5: ignore_label, 6: ignore_label,
+                              7: 0, 8: 1, 9: ignore_label, 10: ignore_label, 11: 2, 12: 3, 13: 4,
+                              14: ignore_label, 15: ignore_label, 16: ignore_label, 17: 5,
+                              18: ignore_label, 19: 6, 20: 7, 21: 8, 22: 9, 23: 10, 24: 11, 25: 12, 26: 13, 27: 14,
+                              28: 15, 29: ignore_label, 30: ignore_label, 31: 16, 32: 17, 33: 18}
+
+    img_path = '/home/tdmc/data/segmentation/cityScapes/leftImg8bit_trainvaltest/leftImg8bit/train/aachen/aachen_000000_000019_leftImg8bit.png'
+    mask_path = '/home/tdmc/data/segmentation/cityScapes/gtFine_trainvaltest/gtFine/train/aachen/aachen_000000_000019_gtFine_labelIds.png'
+    img, mask = Image.open(img_path).convert('RGB'), Image.open(mask_path)
+    mask = np.array(mask)
+    mask_copy = mask.copy()
+    for k, v in id_to_trainid.items():
+        mask_copy[mask == k] = v
+    mask = Image.fromarray(mask_copy.astype(np.uint8))
+
+    sliding_crop = SlidingCrop(args['crop_size'], args['stride_rate'], ignore_label)
+    mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    train_input_transform = standard_transforms.Compose([
+        standard_transforms.ToTensor(),
+        standard_transforms.Normalize(*mean_std)
+    ])
+    target_transform = extended_transforms.MaskToTensor()
+
+    img_slices, mask_slices, slices_info = sliding_crop(img, mask)
+    print(len(img_slices), len(mask_slices), len(slices_info))
+    print(img_slices[0].size, mask_slices[0].size, len(slices_info[0]))
+
+
+    img_slices = [train_input_transform(e) for e in img_slices]
+    mask_slices = [target_transform(e) for e in mask_slices]
+
+    img, mask = torch.stack(img_slices, 0), torch.stack(mask_slices, 0)
+
+    print(img.size(), mask.size(), torch.LongTensor(slices_info).size())
+    img.transpose_(0, 1)
+    mask.transpose_(0, 1)
+    
+    print('done')
+    print(img.size(), mask.size(), torch.LongTensor(slices_info).size())
+
+

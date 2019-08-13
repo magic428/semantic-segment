@@ -1,3 +1,4 @@
+#coding=utf-8
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
 
@@ -38,13 +39,14 @@ args = {
     'train_batch_size': 4,
     'lr': 1e-2 / sqrt(16 / 2),
     'lr_decay': 0.9,
-    'max_iter': 9e4,
+    'max_iter': 2e5,
     'longer_size': 2048,
     'crop_size': 713,
     'stride_rate': 2 / 3.,
     'weight_decay': 1e-4,
     'momentum': 0.9,
     'snapshot': '',
+    #'snapshot': 'epoch_99_iter_386_loss_0.25426_acc_0.94566_acc-cls_0.68272_mean-iu_0.63001_fwavacc_0.89862_lr_0.0007806177.pth',
     'print_freq': 10,
     'val_save_to_img_file': True,
     'val_img_sample_rate': 0.01,  # randomly sample some validation results to display,
@@ -105,10 +107,10 @@ def main():
 
     train_set = cityscapes.CityScapes('fine', 'train', joint_transform=train_joint_transform, sliding_crop=sliding_crop,
                                       transform=train_input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=8, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=8, shuffle=True, drop_last=True)
     val_set = cityscapes.CityScapes('fine', 'val', transform=val_input_transform, sliding_crop=sliding_crop,
                                     target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
+    val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False, drop_last=True)
 
     criterion = CrossEntropyLoss2d(size_average=True, ignore_index=cityscapes.ignore_label).cuda()
 
@@ -143,12 +145,19 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
                                                                   ) ** train_args['lr_decay']
 
             inputs, gts, _ = data
+            
+            # Supress the Error: "Expected more than 1 value per channel when training..." 
+            # while there is a BatchNorm2D in the model's back-bone
+            if not inputs.size()[0] > 1:
+                continue
+
             assert len(inputs.size()) == 5 and len(gts.size()) == 4
             inputs.transpose_(0, 1)
             gts.transpose_(0, 1)
 
             assert inputs.size()[3:] == gts.size()[2:]
             slice_batch_pixel_size = inputs.size(1) * inputs.size(3) * inputs.size(4)
+
 
             for inputs_slice, gts_slice in zip(inputs, gts):
                 inputs_slice = Variable(inputs_slice).cuda()
@@ -172,7 +181,7 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
             writer.add_scalar('train_main_loss', train_main_loss.avg, curr_iter)
             writer.add_scalar('train_aux_loss', train_aux_loss.avg, curr_iter)
             writer.add_scalar('lr', optimizer.param_groups[1]['lr'], curr_iter)
-
+    
             if (i + 1) % train_args['print_freq'] == 0:
                 print('[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
                     curr_epoch, i + 1, len(train_loader), train_main_loss.avg, train_aux_loss.avg,

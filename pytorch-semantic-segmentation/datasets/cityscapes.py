@@ -96,3 +96,9 @@ class CityScapes(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+
+if __name__ == "__main__":
+    items = make_dataset('fine', 'val')
+    for item in items:
+        print(item)
